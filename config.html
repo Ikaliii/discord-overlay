@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Discord Overlay</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@500;700;800&display=swap');
+
+    :root {
+      --bg0: #0e0f17;
+      --bg1: #16182a;
+      --bg2: #1e2035;
+      --bg3: #262844;
+      --accent: #5865f2;
+      --accent2: #7289da;
+      --green: #3ba55c;
+      --red: #ed4245;
+      --text: #e3e5e8;
+      --muted: #72767d;
+      --border: rgba(88,101,242,0.2);
+      --radius: 10px;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg0);
+      color: var(--text);
+      font-family: 'Syne', 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── Layout ─────────────────────────────────────── */
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg1);
+      flex-shrink: 0;
+    }
+
+    header svg { flex-shrink: 0; }
+
+    .header-text h1 {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.3px;
+    }
+
+    .header-text p {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 1px;
+    }
+
+    .status-pill {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      transition: all 0.25s;
+    }
+
+    .status-pill.offline {
+      background: rgba(114,118,125,0.15);
+      color: var(--muted);
+      border: 1px solid rgba(114,118,125,0.25);
+    }
+
+    .status-pill.online {
+      background: rgba(59,165,92,0.15);
+      color: var(--green);
+      border: 1px solid rgba(59,165,92,0.3);
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .dot.pulse { animation: pulse 1.8s ease-in-out infinite; }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── Body scroll ────────────────────────────────── */
+
+    .body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .body::-webkit-scrollbar { width: 4px; }
+    .body::-webkit-scrollbar-track { background: transparent; }
+    .body::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 4px; }
+
+    /* ── Section cards ──────────────────────────────── */
+
+    .section {
+      background: var(--bg1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--accent2);
+    }
+
+    .section-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── Form fields ────────────────────────────────── */
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+
+    label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .label-hint {
+      font-size: 10px;
+      font-weight: 400;
+      color: rgba(114,118,125,0.7);
+      text-transform: none;
+      letter-spacing: 0;
+      margin-left: 6px;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    select {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--bg0);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    .toggle-eye {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 3px;
+      display: flex;
+      align-items: center;
+    }
+
+    .toggle-eye:hover { color: var(--text); }
+
+    /* ── Slider fields ──────────────────────────────── */
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+      height: 4px;
+    }
+
+    .slider-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent2);
+      min-width: 38px;
+      text-align: right;
+    }
+
+    /* ── Inline rows ────────────────────────────────── */
+
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* ── Checkbox ───────────────────────────────────── */
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .check-row input[type="checkbox"] {
+      width: 16px; height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .check-label {
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    /* ── Buttons ────────────────────────────────────── */
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'Syne', sans-serif;
+      letter-spacing: 0.3px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.18s;
+      width: 100%;
+    }
+
+    .btn-connect {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-connect:hover:not(:disabled) {
+      background: #4752c4;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(88,101,242,0.35);
+    }
+
+    .btn-disconnect {
+      background: rgba(237,66,69,0.12);
+      color: var(--red);
+      border: 1px solid rgba(237,66,69,0.25);
+    }
+
+    .btn-disconnect:hover:not(:disabled) {
+      background: rgba(237,66,69,0.2);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ── Error banner ───────────────────────────────── */
+
+    .error-banner {
+      display: none;
+      padding: 10px 14px;
+      background: rgba(237,66,69,0.1);
+      border: 1px solid rgba(237,66,69,0.3);
+      border-radius: 8px;
+      color: #f08080;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .error-banner.show { display: block; }
+
+    /* ── Message log ────────────────────────────────── */
+
+    .log-head-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-clear {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-size: 10px;
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .btn-clear:hover { color: var(--text); border-color: var(--muted); }
+
+    #log {
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #log::-webkit-scrollbar { width: 3px; }
+    #log::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+
+    .log-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--bg0);
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.04);
+      animation: fadeUp 0.25s ease-out;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .log-avatar {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--bg3);
+      flex-shrink: 0;
+    }
+
+    .log-body { flex: 1; min-width: 0; }
+
+    .log-author {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent2);
+    }
+
+    .log-content {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .log-time {
+      font-size: 10px;
+      color: rgba(114,118,125,0.5);
+      font-family: 'JetBrains Mono', monospace;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .log-empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 20px 0;
+      font-style: italic;
+    }
+
+    .log-attach-badge {
+      display: inline-block;
+      font-size: 10px;
+      background: rgba(88,101,242,0.15);
+      color: var(--accent2);
+      border-radius: 3px;
+      padding: 1px 5px;
+      margin-left: 4px;
+    }
+
+    /* ── Updater ─────────────────────────────────── */
+
+    .update-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: rgba(88,101,242,0.1);
+      border-top: 1px solid rgba(88,101,242,0.25);
+      border-bottom: 1px solid rgba(88,101,242,0.25);
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .update-bar.show { display: flex; }
+
+    .update-bar.ready {
+      background: rgba(59,165,92,0.1);
+      border-color: rgba(59,165,92,0.25);
+    }
+
+    .update-bar.error {
+      background: rgba(237,66,69,0.08);
+      border-color: rgba(237,66,69,0.2);
+    }
+
+    .update-icon { font-size: 15px; flex-shrink: 0; }
+
+    .update-text { flex: 1; color: var(--text); line-height: 1.4; }
+    .update-text strong { color: #a5b4fc; }
+
+    .update-prog {
+      width: 100%;
+      height: 3px;
+      background: rgba(88,101,242,0.2);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    .update-prog-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .btn-update {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: 'Syne', sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+
+    .btn-update:hover { background: #4752c4; }
+
+    .version-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: rgba(114,118,125,0.4);
+      margin-left: auto;
+      padding: 2px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- ── Header ─────────────────────────────────── -->
+    <header>
+      <svg width="28" height="22" viewBox="0 0 71 55" fill="none">
+        <path d="M60.1 4.9C55.6 2.8 50.7 1.3 45.7.4c-.1 0-.2 0-.3.1-.6 1.1-1.3 2.6-1.8 3.7-5.5-.8-10.9-.8-16.3 0-.5-1.1-1.2-2.6-1.8-3.7-.1-.1-.2-.1-.3-.1C20.3 1.3 15.4 2.8 10.9 4.9c0 0-.1 0-.1.1C1.6 18.7-.9 32.1.3 45.4c0 .1.1.1.1.2 6.1 4.5 12 7.2 17.8 9 .1 0 .2 0 .3-.1 1.4-1.9 2.6-3.8 3.6-5.9.1-.1 0-.3-.1-.3-1.9-.7-3.8-1.6-5.5-2.6-.2-.1-.2-.3 0-.4.4-.3.7-.6 1.1-.9.1-.1.2-.1.3-.1 11.6 5.3 24.2 5.3 35.7 0 .1 0 .2 0 .3.1.4.3.7.6 1.1.9.1.1.1.3 0 .4-1.8 1-3.6 1.9-5.5 2.6-.1 0-.2.2-.1.3 1.1 2.1 2.2 4 3.6 5.9.1.1.2.1.3.1 5.8-1.8 11.6-4.5 17.7-9 .1 0 .1-.1.1-.2 1.5-15.3-2.5-28.6-10.5-40.4 0 0-.1-.1-.1-.1z"
+              fill="#5865F2"/>
+      </svg>
+      <div class="header-text">
+        <h1>Discord Overlay</h1>
+        <p>Broadcast to screens in real-time</p>
+      </div>
+      <div class="status-pill offline" id="statusPill">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusLabel">Hors ligne</span>
+      </div>
+    </header>
+
+    <!-- ── Barre de mise à jour ───────────────────── -->
+    <div class="update-bar" id="updateBar">
+      <span class="update-icon" id="updateIcon">🔄</span>
+      <div style="flex:1">
+        <div id="updateMsg">Vérification des mises à jour…</div>
+        <div class="update-prog" id="updateProgWrap" style="display:none">
+          <div class="update-prog-bar" id="updateProgBar"></div>
+        </div>
+      </div>
+      <button class="btn-update" id="btnInstall" style="display:none">
+        Redémarrer
+      </button>
+      <span class="version-tag" id="versionTag"></span>
+    </div>
+
+    <!-- ── Body ───────────────────────────────────── -->
+    <div class="body">
+
+      <!-- Connexion -->
+      <div class="section">
+        <div class="section-head">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Connexion bot
+        </div>
+        <div class="section-body">
+
+          <div class="field">
+            <label>Token du bot <span class="label-hint">— Discord Developer Portal</span></label>
+            <div class="input-wrap">
+              <input type="password" id="token" placeholder="MTEx…" spellcheck="false" autocomplete="off" />
+              <button class="toggle-eye" id="toggleToken" title="Afficher/masquer">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>ID du salon <span class="label-hint">— Clic droit → Copier l'ID</span></label>
+            <input type="text" id="channelId" placeholder="123456789012345678" spellcheck="false" autocomplete="off" />
+          </div>
+
+          <div class="error-banner" id="errorBanner"></div>
+
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-connect" id="btnConnect">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              Connecter
+            </button>
+            <button class="btn btn-disconnect" id="btnDisconnect" style="display:none">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Déconnecter
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Paramètres d'affichage -->
+      <div class="section">
+        <div class="section-head">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+          Affichage overlay
+        </div>
+        <div class="section-body">
+
+          <div class="row-2">
+            <div class="field">
+              <label>Durée d'affichage</label>
+              <div class="slider-row">
+                <input type="range" id="duration" min="2" max="30" value="6" />
+                <span class="slider-val" id="durationVal">6s</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Opacité</label>
+              <div class="slider-row">
+                <input type="range" id="opacity" min="50" max="100" value="90" />
+                <span class="slider-val" id="opacityVal">90%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Position sur l'écran</label>
+            <select id="position">
+              <option value="top-right">↗ Haut droite</option>
+              <option value="top-left">↖ Haut gauche</option>
+              <option value="bottom-right">↘ Bas droite</option>
+              <option value="bottom-left">↙ Bas gauche</option>
+              <option value="center">⊙ Centre</option>
+            </select>
+          </div>
+
+          <label class="check-row">
+            <input type="checkbox" id="muteVideos" />
+            <span class="check-label">Couper le son des vidéos</span>
+          </label>
+
+        </div>
+      </div>
+
+      <!-- Log des messages -->
+      <div class="section">
+        <div class="section-head">
+          <div class="log-head-row" style="width:100%; display:flex; align-items:center; justify-content:space-between;">
+            <span style="display:flex; align-items:center; gap:8px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Messages reçus
+            </span>
+            <button class="btn-clear" id="btnClear">Vider</button>
+          </div>
+        </div>
+        <div class="section-body" style="padding-top:12px; padding-bottom:12px;">
+          <div id="log">
+            <div class="log-empty" id="logEmpty">Aucun message pour l'instant…</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /body -->
+  </div>
+
+  <script>
+    // ── État ─────────────────────────────────────────
+
+    let connected = false;
+
+    const $ = id => document.getElementById(id);
+
+    const tokenEl     = $('token');
+    const channelEl   = $('channelId');
+    const durationEl  = $('duration');
+    const opacityEl   = $('opacity');
+    const positionEl  = $('position');
+    const muteEl      = $('muteVideos');
+    const btnConnect  = $('btnConnect');
+    const btnDisco    = $('btnDisconnect');
+    const errBanner   = $('errorBanner');
+    const statusPill  = $('statusPill');
+    const statusDot   = $('statusDot');
+    const statusLabel = $('statusLabel');
+    const logEl       = $('log');
+    const logEmpty    = $('logEmpty');
+    const durationVal = $('durationVal');
+    const opacityVal  = $('opacityVal');
+
+    // ── Sliders live update ─────────────────────────
+
+    durationEl.addEventListener('input', () => {
+      durationVal.textContent = durationEl.value + 's';
+    });
+
+    opacityEl.addEventListener('input', () => {
+      opacityVal.textContent = opacityEl.value + '%';
+    });
+
+    // ── Show/hide token ─────────────────────────────
+
+    $('toggleToken').addEventListener('click', () => {
+      tokenEl.type = tokenEl.type === 'password' ? 'text' : 'password';
+    });
+
+    // ── Charger la config ───────────────────────────
+
+    async function loadCfg() {
+      const cfg = await window.api.loadConfig();
+      tokenEl.value    = cfg.token      || '';
+      channelEl.value  = cfg.channelId  || '';
+      durationEl.value = cfg.duration   || 6;
+      opacityEl.value  = cfg.opacity    || 90;
+      positionEl.value = cfg.position   || 'top-right';
+      muteEl.checked   = cfg.muteVideos || false;
+      durationVal.textContent = (cfg.duration || 6) + 's';
+      opacityVal.textContent  = (cfg.opacity  || 90) + '%';
+    }
+
+    // ── Lire la config depuis le formulaire ─────────
+
+    function getFormCfg() {
+      return {
+        token:      tokenEl.value.trim(),
+        channelId:  channelEl.value.trim(),
+        duration:   parseInt(durationEl.value, 10),
+        opacity:    parseInt(opacityEl.value, 10),
+        position:   positionEl.value,
+        muteVideos: muteEl.checked
+      };
+    }
+
+    // ── UI status ───────────────────────────────────
+
+    function setStatus(online) {
+      connected = online;
+      if (online) {
+        statusPill.className = 'status-pill online';
+        statusDot.className  = 'dot pulse';
+        statusLabel.textContent = 'En ligne';
+        btnConnect.style.display = 'none';
+        btnDisco.style.display   = '';
+      } else {
+        statusPill.className = 'status-pill offline';
+        statusDot.className  = 'dot';
+        statusLabel.textContent = 'Hors ligne';
+        btnConnect.style.display = '';
+        btnDisco.style.display   = 'none';
+      }
+    }
+
+    function showError(msg) {
+      errBanner.textContent = msg;
+      errBanner.classList.add('show');
+    }
+
+    function clearError() {
+      errBanner.classList.remove('show');
+    }
+
+    // ── Connexion ───────────────────────────────────
+
+    btnConnect.addEventListener('click', async () => {
+      clearError();
+      const cfg = getFormCfg();
+
+      if (!cfg.token) return showError('⚠ Le token du bot est requis.');
+      if (!cfg.channelId) return showError('⚠ L\'ID du salon est requis.');
+      if (!/^\d{17,20}$/.test(cfg.channelId)) return showError('⚠ L\'ID du salon doit être un nombre de 17-20 chiffres.');
+
+      btnConnect.disabled = true;
+      btnConnect.textContent = 'Connexion…';
+
+      const res = await window.api.connect(cfg);
+
+      if (res.ok) {
+        setStatus(true);
+      } else {
+        showError('❌ ' + (res.error || 'Erreur inconnue'));
+      }
+
+      btnConnect.disabled = false;
+      btnConnect.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        Connecter
+      `;
+    });
+
+    // ── Déconnexion ─────────────────────────────────
+
+    btnDisco.addEventListener('click', async () => {
+      btnDisco.disabled = true;
+      await window.api.disconnect();
+      setStatus(false);
+      btnDisco.disabled = false;
+    });
+
+    // ── Log ─────────────────────────────────────────
+
+    function formatTime(ts) {
+      const d = new Date(ts);
+      return d.getHours().toString().padStart(2,'0') + ':' +
+             d.getMinutes().toString().padStart(2,'0');
+    }
+
+    function esc(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function addLogItem(msg) {
+      logEmpty.style.display = 'none';
+
+      const item = document.createElement('div');
+      item.className = 'log-item';
+
+      const attachInfo = msg.attachments && msg.attachments.length
+        ? msg.attachments.map(a =>
+            `<span class="log-attach-badge">${a.type === 'image' ? '🖼' : '🎬'}</span>`
+          ).join('')
+        : '';
+
+      const preview = msg.content
+        ? esc(msg.content.slice(0, 80)) + (msg.content.length > 80 ? '…' : '')
+        : '<em style="opacity:.5">—</em>';
+
+      item.innerHTML = `
+        <img class="log-avatar" src="${esc(msg.avatar)}" onerror="this.style.opacity=0" alt="" />
+        <div class="log-body">
+          <div class="log-author">${esc(msg.author)}</div>
+          <div class="log-content">${preview}${attachInfo}</div>
+        </div>
+        <div class="log-time">${formatTime(msg.timestamp)}</div>
+      `;
+
+      // Garder max 30 entrées
+      while (logEl.querySelectorAll('.log-item').length >= 30) {
+        const first = logEl.querySelector('.log-item');
+        if (first) first.remove();
+      }
+
+      logEl.appendChild(item);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    $('btnClear').addEventListener('click', () => {
+      logEl.querySelectorAll('.log-item').forEach(el => el.remove());
+      logEmpty.style.display = '';
+    });
+
+    // ── Auto-updater ─────────────────────────────────
+
+    const updateBar      = $('updateBar');
+    const updateIcon     = $('updateIcon');
+    const updateMsg      = $('updateMsg');
+    const updateProgWrap = $('updateProgWrap');
+    const updateProgBar  = $('updateProgBar');
+    const btnInstall     = $('btnInstall');
+    const versionTag     = $('versionTag');
+
+    function formatBytes(bytes) {
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' Ko';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
+    }
+
+    // Afficher la version actuelle au démarrage
+    window.api.updaterVersion().then(v => {
+      versionTag.textContent = 'v' + v;
+    });
+
+    // Mise à jour disponible → téléchargement automatique en fond
+    window.api.onUpdaterAvailable((info) => {
+      updateBar.className = 'update-bar show';
+      updateIcon.textContent = '⬇️';
+      updateMsg.innerHTML = `Mise à jour <strong>v${info.version}</strong> en téléchargement…`;
+      updateProgWrap.style.display = '';
+    });
+
+    // À jour
+    window.api.onUpdaterUpToDate((info) => {
+      // Rien à afficher, on reste discret
+    });
+
+    // Progression du téléchargement
+    window.api.onUpdaterProgress((p) => {
+      updateBar.className = 'update-bar show';
+      updateIcon.textContent = '⬇️';
+      updateMsg.innerHTML = `Téléchargement… <strong>${p.percent}%</strong> — ${formatBytes(p.bytesPerSecond)}/s`;
+      updateProgWrap.style.display = '';
+      updateProgBar.style.width = p.percent + '%';
+    });
+
+    // Prêt à installer
+    window.api.onUpdaterDownloaded((info) => {
+      updateBar.className = 'update-bar show ready';
+      updateIcon.textContent = '✅';
+      updateMsg.innerHTML = `<strong>v${info.version}</strong> prête — redémarre pour appliquer`;
+      updateProgWrap.style.display = 'none';
+      btnInstall.style.display = '';
+    });
+
+    // Erreur
+    window.api.onUpdaterError((e) => {
+      console.warn('[Updater]', e.message);
+      // Silencieux — pas d'affichage d'erreur pour ne pas perturber
+    });
+
+    // Bouton redémarrer
+    $('btnInstall').addEventListener('click', () => {
+      window.api.updaterInstall();
+    });
+
+    // ── Écoutes ─────────────────────────────────────
+
+    window.api.onLogMessage((msg) => {
+      addLogItem(msg);
+    });
+
+    // Si le tray déconnecte le bot → mettre à jour l'UI
+    window.api.onTrayDisconnected(() => {
+      setStatus(false);
+    });
+
+    // ── Init ─────────────────────────────────────────
+
+    loadCfg();
+  </script>
+</body>
+</html>

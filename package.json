@@ -1,0 +1,97 @@
+{
+  "name": "discord-overlay",
+  "version": "1.0.0",
+<<<<<<< HEAD
+  "description": "Broadcast Discord messages as transparent overlay on screen",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64",
+    "dist-mac": "electron-builder --mac",
+    "dist-linux": "electron-builder --linux",
+    "publish": "electron-builder --win --x64 --publish always"
+  },
+  "build": {
+  "appId": "com.discord-overlay.app",
+  "productName": "Discord Overlay",
+
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "Ikaliii",
+      "repo": "discord-overlay",
+      "releaseType": "release"
+    }
+  ]
+},
+    "publish": [
+  {
+    "provider": "github",
+    "owner": "Ikaliii",
+    "repo": "discord-overlay",
+    "releaseType": "release"
+  }
+],
+    "files": [
+      "main.js",
+      "bot.js",
+      "preload.js",
+      "overlay.html",
+      "config.html",
+      "icon.ico",
+      "package.json"
+    ],
+    "win": {
+      "icon": "icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Discord Overlay"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "electron-updater": "^6.8.3"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}
+=======
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
+>>>>>>> 6f0691070b20671e996165df04b697ea7761f159
